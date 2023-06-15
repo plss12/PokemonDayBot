@@ -9,7 +9,6 @@ import cv2
 import sys
 from decouple import config
 
-
 api_key = config('API_KEY')
 api_secret = config('API_SECRET')
 
@@ -18,17 +17,20 @@ bearer_token = config('BEARER_TOKEN')
 access_token = config('ACCESS_TOKEN')
 access_token_secret = config('ACCESS_TOKEN_SECRET')
 
-#client = tweepy.Client(bearer_token, api_key, api_secret, access_token, access_token_secret)
+auth = tweepy.OAuth1UserHandler(
+    api_key,
+    api_secret,
+    access_token,
+    access_token_secret
+)
 
-auth = tweepy.OAuthHandler(api_key, api_secret)
-auth.set_access_token(access_token, access_token_secret)
+#API V1.1 (Para subir fotos)
 api = tweepy.API(auth)
 
+#API V2 (Para subir el tweet)
+client = tweepy.Client(bearer_token, api_key, api_secret, access_token, access_token_secret)
+
 def leer_fichero_as_list(fichero):
-    #Si no existe el fichero lo crea
-    if(not os.path.exists(fichero)):
-        with open(fichero, "w") as f:
-            f.write("")
     with open(fichero, "r") as f:
         lineas = [linea.split(",") for linea in f]
     return lineas
@@ -119,10 +121,11 @@ def tweet(pokemon):
     media1 = api.media_upload("Normal.jpg")
     media2 = api.media_upload("Shiny.jpg")
 
-    api.update_status(status=texto, media_ids=[media1.media_id_string, media2.media_id_string])
+    client.create_tweet(text=texto, media_ids=[media1.media_id_string, media2.media_id_string])
     elimnar_fotos()
 
 def pokemon_tweet():
+    inicio = time.time()
     listaPokemon = leer_fichero_as_list("Pokemon.txt")
     listaPokemonVistos = leer_fichero_as_list("PokemonVistos.txt")
     if(len(listaPokemonVistos) != len(listaPokemon)):
@@ -132,20 +135,20 @@ def pokemon_tweet():
         cargarPokemon(numeroPokemon+1)
         print("Pokemon vistos ",len(listaPokemonVistos))
     time.sleep(1)
+    fin = time.time()
+    print("Tiempo de ejecución ", fin-inicio)
     sys.exit()
 
 def main():
-    #Cargar los pokemon en el fichero si no existe el fichero o está vacío lo crea y lo carga
-    if(not os.path.exists("Pokemon.txt")):
-        with open("Pokemon.txt", "w") as f:
-            f.write("")
-        cargarPokemon(1)
+    #id=1
+    #cargarPokemon(id)
 
-    pokemon_tweet()
+    schedule.every().day.at('20:00').do(pokemon_tweet)
 
     while True:
         schedule.run_pending()
         time.sleep(1)
+
 
 if __name__ == "__main__":
     main()
